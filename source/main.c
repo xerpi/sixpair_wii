@@ -21,8 +21,9 @@ int bte_read_bdaddr_cb(s32 result, void *userdata);
 struct bd_addr bdaddr;
 
 void find_and_set_mac();
-int ps3_get_mac(int fd, uint8_t *mac);
-int ps3_set_mac(int fd, const uint8_t *mac);
+int ps3_get_bd_mac(int fd, uint8_t *mac);
+int ps3_get_pair_mac(int fd, uint8_t *mac);
+int ps3_set_pair_mac(int fd, const uint8_t *mac);
 
 int main(int argc, char **argv)
 {
@@ -79,10 +80,17 @@ void find_and_set_mac()
             printf("Local BD MAC: ");
             print_mac(bdaddr.addr);
             printf("\n");
-                    
+            
             uint8_t mac[6];
-            ps3_get_mac(fd, mac);
-            printf("Current controller address: ");
+            printf("Controller's bd MAC address: ");
+            ps3_get_bd_mac(fd, mac);
+            print_mac(mac);
+            printf("\n");
+            
+                    
+            ps3_get_pair_mac(fd, mac);
+            printf("\nCurrent controller address: ");
+            print_mac(mac);
             
             struct bd_addr bd2;
             memcpy(bd2.addr, mac, sizeof(uint8_t) * 6);
@@ -95,8 +103,8 @@ void find_and_set_mac()
             printf("\nSetting the local address...");
             
             uint8_t *mac2 = bdaddr.addr;
-            ps3_set_mac(fd, mac2);
-            ps3_get_mac(fd, mac);
+            ps3_set_pair_mac(fd, mac2);
+            ps3_get_pair_mac(fd, mac);
             printf("\nController's address set to: ");
             print_mac(mac);
             
@@ -114,7 +122,27 @@ void find_and_set_mac()
     printf("No controller found on USB busses.\n");
 }
 
-int ps3_get_mac(int fd, uint8_t *mac)
+int ps3_get_bd_mac(int fd, uint8_t *mac)
+{
+    uint8_t ATTRIBUTE_ALIGN(32) msg[17];
+    int ret = USB_WriteCtrlMsg(fd,
+                USB_REQTYPE_INTERFACE_GET,
+                USB_REQ_GETREPORT,
+                (USB_REPTYPE_FEATURE<<8) | 0xf2,
+                0,
+                sizeof(msg),
+                msg);
+    
+    mac[0] = msg[4];
+    mac[1] = msg[5];
+    mac[2] = msg[6];
+    mac[3] = msg[7];
+    mac[4] = msg[8];
+    mac[5] = msg[9];
+    return ret;
+}
+
+int ps3_get_pair_mac(int fd, uint8_t *mac)
 {
     uint8_t ATTRIBUTE_ALIGN(32) msg[8];
     int ret = USB_WriteCtrlMsg(fd,
@@ -134,7 +162,7 @@ int ps3_get_mac(int fd, uint8_t *mac)
     return ret;
 }
 
-int ps3_set_mac(int fd, const uint8_t *mac)
+int ps3_set_pair_mac(int fd, const uint8_t *mac)
 {
     uint8_t ATTRIBUTE_ALIGN(32) msg[] = {0x01, 0x00, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]};
     int ret = USB_WriteCtrlMsg(fd,
@@ -170,5 +198,5 @@ void init_video()
 	VIDEO_Flush();
 	VIDEO_WaitVSync();
 	if(rmode->viTVMode&VI_NON_INTERLACE) VIDEO_WaitVSync();
-	printf("\x1b[2;0H");
+	printf("\x1b[1;0H");
 }
