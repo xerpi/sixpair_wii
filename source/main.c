@@ -77,19 +77,19 @@ void find_and_set_mac()
                 printf("Could not open the PS3 controller.\n"); return;
             }
         
-            printf("Local BD MAC: ");
+            printf("Wii local BD MAC: ");
             print_mac(bdaddr.addr);
             printf("\n");
             
             uint8_t mac[6];
-            printf("Controller's bd MAC address: ");
+            printf("Controller's bluetooth MAC address: ");
             ps3_get_bd_mac(fd, mac);
             print_mac(mac);
             printf("\n");
             
                     
             ps3_get_pair_mac(fd, mac);
-            printf("\nCurrent controller address: ");
+            printf("\nCurrent controller paired address: ");
             print_mac(mac);
             
             struct bd_addr bd2;
@@ -100,19 +100,19 @@ void find_and_set_mac()
             }       
             
             print_mac(mac);
-            printf("\nSetting the local address...");
+            printf("\nSetting the pair address...");
             
             uint8_t *mac2 = bdaddr.addr;
             ps3_set_pair_mac(fd, mac2);
             ps3_get_pair_mac(fd, mac);
-            printf("\nController's address set to: ");
+            printf("\nController's pair address set to: ");
             print_mac(mac);
             
             memcpy(bd2.addr, mac2, sizeof(uint8_t) * 6);
             if (bd_addr_cmp(&bdaddr, &bd2)) {
                 printf("\n\nAddress set correctly! Press HOME to exit.\n");   
             } else {
-                printf("\n\nBT MAC Address could not be set correctly.\n");   
+                printf("\n\nPair MAC Address could not be set correctly.\n");   
             }
             
             USB_CloseDevice(&fd);
