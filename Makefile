@@ -105,7 +105,7 @@ clean:
 	@rm -fr $(BUILD) $(OUTPUT).elf $(OUTPUT).dol
 
 #---------------------------------------------------------------------------------
-run:
+run: $(BUILD)
 	wiiload $(TARGET).dol
 
 
