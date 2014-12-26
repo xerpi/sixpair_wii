@@ -10,6 +10,16 @@
 #define VID  0x054C
 #define PID  0x0268
 
+/*
+config header:
+	offset  |  size  |  value
+	   0    |   4    |  number of paired devices
+	   4    |   6    |  BT MAC of the 1st device
+	  4+6*i |   6    |  BT MAC of the i-th device
+*/
+static const char conf_file[] ATTRIBUTE_ALIGN(32) = "/shared2/sys/ds3wiibt.dat";
+
+
 int run = 1, bd_addr_read = 0;
 int heap_id = -1;
 void *xfb = NULL;
@@ -24,6 +34,7 @@ void find_and_set_mac();
 int ps3_get_bd_mac(int fd, uint8_t *mac);
 int ps3_get_pair_mac(int fd, uint8_t *mac);
 int ps3_set_pair_mac(int fd, const uint8_t *mac);
+int config_add_mac(const uint8_t *mac);
 
 int main(int argc, char **argv)
 {
@@ -81,11 +92,15 @@ void find_and_set_mac()
             print_mac(bdaddr.addr);
             printf("\n");
             
-            uint8_t mac[6];
+            uint8_t mac[6] ATTRIBUTE_ALIGN(32);
             printf("Controller's bluetooth MAC address: ");
             ps3_get_bd_mac(fd, mac);
             print_mac(mac);
             printf("\n");
+			//Write the MAC to the NAND
+			if (config_add_mac(mac)) {
+				printf("MAC added to the config file!\n");
+			}
             
                     
             ps3_get_pair_mac(fd, mac);
@@ -120,6 +135,30 @@ void find_and_set_mac()
         }
     }
     printf("No controller found on USB busses.\n");
+}
+
+//Deletes the config file and adds this mac
+int config_add_mac(const uint8_t *mac)
+{
+	ISFS_Initialize();
+	int fd = ISFS_Open(conf_file, ISFS_OPEN_RW);
+	if (fd >= 0) {
+		ISFS_Close(fd);
+		ISFS_Delete(conf_file);
+	}
+	printf("Creating config file... ");
+	int ret = ISFS_CreateFile(conf_file, 0, ISFS_OPEN_RW, ISFS_OPEN_RW, ISFS_OPEN_RW);
+	if (ret < 0) {
+		printf("Error creating \"%s\" : %d\n", conf_file, ret);
+		return -1;
+	}
+	printf("done!\n");
+	fd = ISFS_Open(conf_file, ISFS_OPEN_RW);
+	ISFS_Seek(fd, 0, SEEK_SET);
+	int n = ISFS_Write(fd, mac, 6);
+	ISFS_Close(fd);
+	ISFS_Deinitialize();
+	return (n == 6);
 }
 
 int ps3_get_bd_mac(int fd, uint8_t *mac)
